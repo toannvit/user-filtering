@@ -1,17 +1,17 @@
 const moment = require("moment");
 const { userRepo } = require("../models/repositories");
 
-exports.getUsers = async (req) => {
+exports.getUsers = (req) => {
   const pipelines = [];
   const query = {};
 
-  if (req.query["filter-date"]) {
+  if (req.query["filter-type"]) {
     const filterType = ["week", "year", "month"].includes(
       req.query["filter-type"]
     )
       ? req.query["filter-type"]
       : "year";
-    const filterDate = moment(req.query["filter-date"], "DD-MM-YYYY").utc();
+    const filterDate = moment().utc();
 
     let addField = {};
     switch (filterType) {
@@ -49,6 +49,23 @@ exports.getUsers = async (req) => {
     };
   }
 
+  if (req.query["filter-date"]) {
+    pipelines.push({
+      $addFields: {
+        updatedAt: {
+          $dateToString: {
+            format: "%Y/%m/%d",
+            date: "$updatedAt",
+          },
+        },
+      },
+    });
+
+    query["updatedAt"] = moment(req.query["filter-date"], "DD-MM-YYYY").format(
+      "YYYY/MM/DD"
+    );
+  }
+
   if (req.query["filter-reference"]) {
     query["reference"] = req.query["filter-reference"];
   }
@@ -75,5 +92,5 @@ exports.getUsers = async (req) => {
     },
   });
 
-  return await userRepo.aggregate(pipelines);
+  return userRepo.aggregate(pipelines);
 };
